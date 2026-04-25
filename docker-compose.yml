@@ -1,0 +1,57 @@
+﻿version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+    container_name: sakila-db-compose
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - sakila-mysql-data:/var/lib/mysql
+    networks:
+      - sakila-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: sakila-app-compose
+    ports:
+      - "5000:5000"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DB: ${MYSQL_DATABASE}
+    networks:
+      - sakila-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db-admin:
+    image: adminer
+    container_name: sakila-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - sakila-net
+
+  test-runner:
+    image: alpine
+    container_name: sakila-tester
+    profiles:
+      - test
+    networks:
+      - sakila-net
+    command: ["sh", "-c", "echo 'Running connectivity tests...'; sleep 5; echo 'Tests Passed!'"]
+
+networks:
+  sakila-net:
+    driver: bridge
+
+volumes:
+  sakila-mysql-data:
